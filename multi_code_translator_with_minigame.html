@@ -1,0 +1,161 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Translator with Mini Game</title>
+<style>
+body { font-family: Arial, sans-serif; background:#0f0f14; color:#eaeaf0; padding:20px; overflow: hidden; }
+textarea { width:100%; height:120px; background:#1b1b26; color:#eaeaf0; border:1px solid #333; padding:10px; margin-top:10px; }
+button { margin-top:10px; padding:10px 14px; background:#3b5cff; color:white; border:none; cursor:pointer; }
+button:hover { opacity:0.9; }
+pre { background:#1b1b26; padding:10px; border:1px solid #333; margin-top:10px; white-space: pre-wrap; word-wrap: break-word; }
+select { padding:6px; margin-top:10px; background:#1b1b26; color:#eaeaf0; border:1px solid #333; }
+h2 { margin-bottom:5px; }
+.key-display { margin-top:10px; background:#292932; padding:10px; border:1px solid #444; display:none; white-space: pre-wrap; }
+#gameCanvas { position: fixed; bottom: 20px; right: 20px; border:2px solid #fff; background:#1b1b26; z-index:100; }
+</style>
+</head>
+<body>
+
+<h2>Custom Translator with Mini Game</h2>
+
+<label for="codeSelect">Select Code:</label>
+<select id="codeSelect">
+  <option value="number">Number Code</option>
+  <option value="letters">Letters-Only Code</option>
+</select>
+
+<br><br>
+<label for="bgUpload">Upload Background Image:</label>
+<input type="file" id="bgUpload" accept="image/*">
+<br>
+
+<textarea id="input" placeholder="Type text or code here..."></textarea>
+
+<br>
+<button onclick="encode()">Encode</button>
+<button onclick="decode()">Decode</button>
+
+<h3>Output</h3>
+<pre id="output"></pre>
+
+<div id="keyDisplay" class="key-display"></div>
+
+<canvas id="gameCanvas" width="300" height="100"></canvas>
+
+<script>
+// Translator code
+const codes = {
+  number: {
+    key: { "A":"31","B":"25","C":"13","D":"43","E":"12","F":"35","G":"21","H":"32","I":"11","J":"45","K":"24","L":"33","M":"14","N":"41","O":"22","P":"34","Q":"15","R":"42","S":"23","T":"44","U":"16","V":"36","W":"26","X":"51","Y":"17","Z":"46" },
+    rev: {}
+  },
+  letters: {
+    key: { "A":"KA","B":"ZU","C":"ME","D":"RA","E":"TI","F":"LO","G":"SA","H":"NE","I":"KI","J":"VO","K":"DA","L":"RE","M":"MI","N":"NO","O":"TA","P":"SE","Q":"XI","R":"LA","S":"SO","T":"TE","U":"KU","V":"VA","W":"WE","X":"XO","Y":"YA","Z":"ZE" },
+    rev: {}
+  }
+};
+
+for (let c in codes) codes[c].rev = Object.fromEntries(Object.entries(codes[c].key).map(a => [a[1], a[0]]));
+
+document.getElementById("bgUpload").addEventListener("change", function(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.body.style.backgroundImage = "url('" + e.target.result + "')";
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center";
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+function getCurrentCode() { return codes[document.getElementById("codeSelect").value]; }
+
+function showKeys() {
+  let html = "<b>Number Code Key:</b>\n";
+  for (let ch in codes.number.key) html += ch + " → " + codes.number.key[ch] + "\n";
+  html += "\n<b>Letters-Only Code Key:</b>\n";
+  for (let ch in codes.letters.key) html += ch + " → " + codes.letters.key[ch] + "\n";
+  document.getElementById("keyDisplay").textContent = html;
+  document.getElementById("keyDisplay").style.display = "block";
+}
+
+function encode() {
+  const input = document.getElementById("input").value.toUpperCase();
+  if (input==="CODEKEY") { showKeys(); document.getElementById("output").textContent=""; return; }
+  else { document.getElementById("keyDisplay").style.display="none"; }
+  const code = getCurrentCode();
+  let result=[];
+  for (let ch of input) { if(code.key[ch]) result.push(code.key[ch]); else if(ch===" ") result.push("/"); }
+  document.getElementById("output").textContent = result.join(" ");
+}
+
+function decode() {
+  const input = document.getElementById("input").value.toUpperCase();
+  if (input==="CODEKEY") { showKeys(); document.getElementById("output").textContent=""; return; }
+  else { document.getElementById("keyDisplay").style.display="none"; }
+  const code = getCurrentCode();
+  const segments = input.split(" ");
+  let result = "";
+  for (let s of segments) { if(code.rev[s]) result += code.rev[s]; else if(s==="/") result += " "; }
+  document.getElementById("output").textContent = result;
+}
+
+// Mini Dino-style runner game
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let dino = { x: 50, y: 70, width: 20, height: 20, dy: 0, jumping:false };
+let obstacles = [];
+let score = 0;
+let gravity = 0.6;
+let speed = 2;
+
+function spawnObstacle() {
+  obstacles.push({ x: 300, y: 70, width: 20, height: 20 });
+}
+
+function resetGame() { obstacles=[]; score=0; dino.y=70; dino.dy=0; dino.jumping=false; }
+
+document.addEventListener("keydown", function(e) {
+  if(e.code==="Space" && !dino.jumping) { dino.dy=-10; dino.jumping=true; }
+});
+
+function gameLoop() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Dino
+  dino.dy += gravity;
+  dino.y += dino.dy;
+  if(dino.y>70) { dino.y=70; dino.dy=0; dino.jumping=false; }
+  ctx.fillStyle="lime";
+  ctx.fillRect(dino.x,dino.y,dino.width,dino.height);
+
+  // Obstacles
+  if(Math.random()<0.02) spawnObstacle();
+  for(let i=0;i<obstacles.length;i++){
+    obstacles[i].x -= speed;
+    ctx.fillStyle="red";
+    ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].width, obstacles[i].height);
+    // collision
+    if(dino.x < obstacles[i].x + obstacles[i].width && dino.x + dino.width > obstacles[i].x &&
+       dino.y < obstacles[i].y + obstacles[i].height && dino.y + dino.height > obstacles[i].y) { resetGame(); break; }
+    if(obstacles[i].x + obstacles[i].width < 0) { obstacles.splice(i,1); i--; score++; }
+  }
+
+  // Score
+  ctx.fillStyle="white";
+  ctx.font="14px Arial";
+  ctx.fillText("Score: "+score, 10, 15);
+
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
